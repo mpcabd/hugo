@@ -151,6 +151,7 @@ var (
 	baseURL         string
 	cacheDir        string
 	contentDir      string
+	contentDirs     []string
 	layoutDir       string
 	cfgFile         string
 	destination     string
@@ -248,6 +249,7 @@ func initHugoBuildCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&logI18nWarnings, "i18n-warnings", "", false, "print missing translations")
 
 	cmd.Flags().StringSliceVar(&disableKinds, "disableKinds", []string{}, "disable different kind of pages (home, RSS etc.)")
+	cmd.Flags().StringSliceVar(&contentDirs, "contentDirs", []string{}, "filesystem paths to content directories. Mutually exclusive with contentDir")
 
 	// Set bash-completion.
 	// Each flag must first be defined before using the SetAnnotation() call.
@@ -359,6 +361,14 @@ func InitializeConfig(subCmdVs ...*cobra.Command) (*deps.DepsCfg, error) {
 
 	if contentDir != "" {
 		config.Set("contentDir", contentDir)
+	}
+
+	if len(contentDirs) > 0 {
+		config.Set("contentDirs", contentDirs)
+	}
+
+	if contentDir != "" && len(contentDirs) > 0 {
+		return nil, fmt.Errorf("contentDirs and contentDir are both defined. You can only define one of them.")
 	}
 
 	if layoutDir != "" {
@@ -532,7 +542,8 @@ func (c *commandeer) build(watches ...bool) error {
 	}
 
 	if buildWatch {
-		c.Logger.FEEDBACK.Println("Watching for changes in", c.PathSpec().AbsPathify(c.Cfg.GetString("contentDir")))
+		contentDirs := helpers.GetContentDirsAbsolutePaths(c.Cfg, c.PathSpec())
+		c.Logger.FEEDBACK.Printf("Watching for changes in %s\n", strings.Join(contentDirs, ", "))
 		c.Logger.FEEDBACK.Println("Press Ctrl+C to stop")
 		utils.CheckErr(c.Logger, c.newWatcher(0))
 	}
@@ -699,7 +710,9 @@ func (c *commandeer) getDirList() []string {
 
 	// SymbolicWalk will log anny ERRORs
 	_ = helpers.SymbolicWalk(c.Fs.Source, dataDir, walker)
-	_ = helpers.SymbolicWalk(c.Fs.Source, c.PathSpec().AbsPathify(c.Cfg.GetString("contentDir")), walker)
+	for _, contentDir := range helpers.GetContentDirsAbsolutePaths(c.Cfg, c.PathSpec()) {
+		_ = helpers.SymbolicWalk(c.Fs.Source, contentDir, walker)
+	}
 	_ = helpers.SymbolicWalk(c.Fs.Source, i18nDir, walker)
 	_ = helpers.SymbolicWalk(c.Fs.Source, layoutDir, walker)
 	_ = helpers.SymbolicWalk(c.Fs.Source, staticDir, walker)

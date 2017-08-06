@@ -1063,7 +1063,7 @@ func (s *Site) initialize() (err error) {
 	staticDir := s.PathSpec.GetStaticDirPath() + "/"
 
 	sp := source.NewSourceSpec(s.Cfg, s.Fs)
-	s.Source = sp.NewFilesystem(s.absContentDir(), staticDir)
+	s.Source = sp.NewFilesystemMultiple(s.absContentDirs(), staticDir)
 
 	return
 }
@@ -1228,8 +1228,8 @@ func (s *Site) getThemeLayoutDir(path string) string {
 	return s.getRealDir(filepath.Join(s.PathSpec.GetThemeDir(), s.layoutDir()), path)
 }
 
-func (s *Site) absContentDir() string {
-	return s.PathSpec.AbsPathify(s.Cfg.GetString("contentDir"))
+func (s *Site) absContentDirs() []string {
+	return helpers.GetContentDirsAbsolutePaths(s.Cfg, s.PathSpec)
 }
 
 func (s *Site) isContentDirEvent(e fsnotify.Event) bool {
@@ -1237,7 +1237,32 @@ func (s *Site) isContentDirEvent(e fsnotify.Event) bool {
 }
 
 func (s *Site) getContentDir(path string) string {
-	return s.getRealDir(s.absContentDir(), path)
+	return s.getRealDirMultiple(s.absContentDirs(), path)
+}
+
+// getRealDirMultiple gets the base path of the given path, also handling the case where
+// base is a symlinked folder.
+func (s *Site) getRealDirMultiple(bases []string, path string) string {
+	errs := make([]string, 0)
+	for _, base := range bases {
+		if strings.HasPrefix(path, base) {
+			return base
+		}
+		realDir, err := helpers.GetRealPath(s.Fs.Source, base)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				errs = append(errs, fmt.Sprintf("base %s - error %s", err))
+			}
+			continue
+		}
+		if strings.HasPrefix(path, realDir) {
+			return realDir
+		}
+	}
+	if len(errs) == len(bases) {
+		s.Log.ERROR.Printf("Failed to get real path for %s: %s", path, strings.Join(errs, ", "))
+	}
+	return ""
 }
 
 // getRealDir gets the base path of the given path, also handling the case where
@@ -1269,8 +1294,10 @@ func (s *Site) absPublishDir() string {
 }
 
 func (s *Site) checkDirectories() (err error) {
-	if b, _ := helpers.DirExists(s.absContentDir(), s.Fs.Source); !b {
-		return errors.New("No source directory found, expecting to find it at " + s.absContentDir())
+	for _, absContentDir := range s.absContentDirs() {
+		if b, _ := helpers.DirExists(absContentDir, s.Fs.Source); !b {
+			return errors.New("No source directory found, expecting to find it at " + absContentDir)
+		}
 	}
 	return
 }
@@ -1297,7 +1324,7 @@ func (s *Site) reReadFile(absFilePath string) (*source.File, error) {
 
 func (s *Site) readPagesFromSource() chan error {
 	if s.Source == nil {
-		panic(fmt.Sprintf("s.Source not set %s", s.absContentDir()))
+		panic(fmt.Sprintf("s.Source not set %s", strings.Join(s.absContentDirs(), ", ")))
 	}
 
 	s.Log.DEBUG.Printf("Read %d pages from source", len(s.Source.Files()))

@@ -67,6 +67,12 @@ func LoadConfig(fs afero.Fs, relativeSourcePath, configFilename string) (*viper.
 		helpers.Deprecated("site config", "disableRobotsTXT", "Use disableKinds= [\"robotsTXT\"]", false)
 	}
 
+	if v.IsSet("contentDir") && v.IsSet("contentDirs") && len(helpers.GetContentDirsNoFallbackToContentDir(v)) != 0 {
+		return nil, fmt.Errorf("contentDirs and contentDir are both defined. You can only define one of them.\n")
+	} else if v.IsSet("contentDir") {
+		v.Set("contentDirs", []string{v.GetString("contentDir")})
+	}
+
 	loadDefaultSettingsFor(v)
 
 	return v, nil
@@ -84,6 +90,7 @@ func loadDefaultSettingsFor(v *viper.Viper) {
 	v.SetDefault("disableSitemap", false)
 	v.SetDefault("disableRobotsTXT", false)
 	v.SetDefault("contentDir", "content")
+	v.SetDefault("contentDirs", make([]string, 0))
 	v.SetDefault("layoutDir", "layouts")
 	v.SetDefault("staticDir", "static")
 	v.SetDefault("archetypeDir", "archetypes")

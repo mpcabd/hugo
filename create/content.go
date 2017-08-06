@@ -16,16 +16,18 @@ package create
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/hugolib"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
-// NewContent creates a new content file in the content directory based upon the
+// NewContent creates a new content file in a content directory based upon the
 // given kind, which is used to lookup an archetype.
 func NewContent(
 	ps *helpers.PathSpec,
@@ -63,10 +65,23 @@ func NewContent(
 		return err
 	}
 
-	contentPath := s.PathSpec.AbsPathify(filepath.Join(s.Cfg.GetString("contentDir"), targetPath))
+	var contentPath string
+	errs := make([]string, 0)
+	contentDirs := helpers.GetContentDirs(s.Cfg)
+	// Try to create the content in content directories, keep track of errors
+	for _, contentDir := range contentDirs {
+		contentPath = s.PathSpec.AbsPathify(filepath.Join(contentDir, targetPath))
+		err := helpers.SafeWriteToDisk(contentPath, bytes.NewReader(content), s.Fs.Source)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("Directory %s - Error %s", contentDir, err))
+		} else {
+			break
+		}
+	}
 
-	if err := helpers.SafeWriteToDisk(contentPath, bytes.NewReader(content), s.Fs.Source); err != nil {
-		return err
+	// If all content directories generated errors, then content cannot be created
+	if len(errs) == len(contentDirs) {
+		return fmt.Errorf("Unable to create content in all content directories: %s.\n", strings.Join(errs, ", "))
 	}
 
 	jww.FEEDBACK.Println(contentPath, "created")

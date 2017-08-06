@@ -35,9 +35,6 @@ import (
 )
 
 func TestNewContent(t *testing.T) {
-	v := viper.New()
-	initViper(v)
-
 	cases := []struct {
 		kind     string
 		path     string

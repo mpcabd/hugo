@@ -44,21 +44,26 @@ type HugoSites struct {
 // Returns nil if none found.
 func (h *HugoSites) GetContentPage(filename string) *Page {
 	s := h.Sites[0]
-	contendDir := filepath.Join(s.PathSpec.AbsPathify(s.Cfg.GetString("contentDir")))
-	if !strings.HasPrefix(filename, contendDir) {
-		return nil
+	contentDirs := helpers.GetContentDirs(s.Cfg)
+
+	for _, contentDir := range contentDirs {
+		contentDir = filepath.Join(s.PathSpec.AbsPathify(contentDir))
+		if !strings.HasPrefix(filename, contentDir) {
+			continue
+		}
+		rel := strings.TrimPrefix(filename, contentDir)
+		rel = strings.TrimPrefix(rel, helpers.FilePathSeparator)
+
+		pos := s.rawAllPages.findPagePosByFilePath(rel)
+
+		if pos == -1 {
+			continue
+		}
+		return s.rawAllPages[pos]
 	}
 
-	rel := strings.TrimPrefix(filename, contendDir)
-	rel = strings.TrimPrefix(rel, helpers.FilePathSeparator)
-
-	pos := s.rawAllPages.findPagePosByFilePath(rel)
-
-	if pos == -1 {
-		return nil
-	}
-	return s.rawAllPages[pos]
-
+	// If content page is not found in all contentDirs
+	return nil
 }
 
 // NewHugoSites creates a new collection of sites given the input sites, building

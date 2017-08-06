@@ -29,6 +29,7 @@ hugo benchmark [flags]
       --canonifyURLs               if true, all relative URLs will be canonicalized using baseURL
       --cleanDestinationDir        remove files from destination not found in static directories
   -c, --contentDir string          filesystem path to content directory
+      --contentDirs stringSlice    filesystem paths to content directories
   -n, --count int                  number of times to build the site (default 13)
       --cpuprofile string          path/filename for the CPU profile file
   -d, --destination string         filesystem path to write files to

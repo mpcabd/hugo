@@ -1070,10 +1070,14 @@ func (p *Page) update(f interface{}) error {
 	p.Params["draft"] = p.Draft
 
 	if p.Date.IsZero() && p.s.Cfg.GetBool("useModTimeAsFallback") {
-		fi, err := p.s.Fs.Source.Stat(filepath.Join(p.s.PathSpec.AbsPathify(p.s.Cfg.GetString("contentDir")), p.File.Path()))
-		if err == nil {
-			p.Date = fi.ModTime()
-			p.Params["date"] = p.Date
+		contentDirs := helpers.GetContentDirs(p.s.Cfg)
+		for _, contentDir := range contentDirs {
+			fi, err := p.s.Fs.Source.Stat(filepath.Join(p.s.PathSpec.AbsPathify(contentDir), p.File.Path()))
+			if err == nil {
+				p.Date = fi.ModTime()
+				p.Params["date"] = p.Date
+				break
+			}
 		}
 	}
 

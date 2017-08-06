@@ -41,6 +41,7 @@ hugo server [flags]
       --canonifyURLs               if true, all relative URLs will be canonicalized using baseURL
       --cleanDestinationDir        remove files from destination not found in static directories
   -c, --contentDir string          filesystem path to content directory
+      --contentDirs stringSlice    filesystem paths to content directories
   -d, --destination string         filesystem path to write files to
       --disable404                 do not render 404 page
       --disableKinds stringSlice   disable different kind of pages (home, RSS etc.)

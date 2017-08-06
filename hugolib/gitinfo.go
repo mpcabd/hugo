@@ -28,8 +28,8 @@ func (h *HugoSites) assembleGitInfo() {
 	}
 
 	var (
-		workingDir = h.Cfg.GetString("workingDir")
-		contentDir = h.Cfg.GetString("contentDir")
+		workingDir  = h.Cfg.GetString("workingDir")
+		contentDirs = helpers.GetContentDirs(h.Cfg)
 	)
 
 	gitRepo, err := gitmap.Map(workingDir, "")
@@ -54,16 +54,24 @@ func (h *HugoSites) assembleGitInfo() {
 			// Home page etc. with no content file.
 			continue
 		}
-		// Git normalizes file paths on this form:
-		filename := path.Join(filepath.ToSlash(contentRoot), contentDir, filepath.ToSlash(p.Path()))
-		g, ok := gitMap[filename]
-		if !ok {
-			h.Log.WARN.Printf("Failed to find GitInfo for %q", filename)
+		// Count how many failed attempts we did
+		errs := 0
+		for _, contentDir := range contentDirs {
+			// Git normalizes file paths on this form:
+			filename := path.Join(filepath.ToSlash(contentRoot), contentDir, filepath.ToSlash(p.Path()))
+			g, ok := gitMap[filename]
+			if !ok {
+				errs++
+			} else {
+				p.GitInfo = g
+				p.Lastmod = p.GitInfo.AuthorDate
+				return
+			}
+		}
+		// If we failed to find GitInfo in all contentDirs
+		if errs == len(contentDirs) {
+			h.Log.WARN.Printf("Failed to find GitInfo for %q", filepath.ToSlash(p.Path()))
 			return
 		}
-
-		p.GitInfo = g
-		p.Lastmod = p.GitInfo.AuthorDate
 	}
-
 }

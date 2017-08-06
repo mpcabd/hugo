@@ -75,6 +75,7 @@ canonifyURLs:               false
 # config file (default is path/config.yaml|json|toml)
 config:                     "config.toml"
 contentDir:                 "content"
+contentDirs:                []
 dataDir:                    "data"
 defaultExtension:           "html"
 defaultLayout:              "post"
@@ -216,6 +217,7 @@ canonifyURLs =                false
 # config file (default is path/config.yaml|json|toml)
 config =                     "config.toml"
 contentDir =                  "content"
+contentDirs =                 []
 dataDir =                     "data"
 defaultExtension =            "html"
 defaultLayout =               "post"

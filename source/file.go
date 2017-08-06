@@ -41,6 +41,7 @@ func NewSourceSpec(cfg config.Provider, fs *hugofs.Fs) SourceSpec {
 // File represents a source content file.
 // All paths are relative from the source directory base
 type File struct {
+	basepath    string // Path to content directory
 	relpath     string // Original relative path, e.g. section/foo.txt
 	logicalName string // foo.txt
 	baseName    string // `post` for `post.md`, also `post.en` for `post.en.md`
@@ -73,6 +74,11 @@ func (f *File) Bytes() []byte {
 // BaseFileName is a filename without extension.
 func (f *File) BaseFileName() string {
 	return f.baseName
+}
+
+// BasePath is a the absolute path to the content directory
+func (f *File) BasePath() string {
+	return f.basepath
 }
 
 // TranslationBaseName is a filename with no extension,
@@ -166,5 +172,7 @@ func (sp SourceSpec) NewFileFromAbs(base, fullpath string, content io.Reader) (f
 		return nil, err
 	}
 
-	return sp.NewFileWithContents(name, content), nil
+	file := sp.NewFileWithContents(name, content)
+	file.basepath = base
+	return file, nil
 }

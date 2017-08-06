@@ -49,10 +49,10 @@ func TestAddFile(t *testing.T) {
 
 			p := test.filename
 			if !filepath.IsAbs(test.filename) {
-				p = filepath.Join(src.Base, test.filename)
+				p = filepath.Join(src.Bases[0], test.filename)
 			}
 
-			if err := src.add(p, bytes.NewReader([]byte(test.content))); err != nil {
+			if err := src.add(src.Bases[0], p, bytes.NewReader([]byte(test.content))); err != nil {
 				if err.Error() == "source: missing base directory" {
 					continue
 				}
@@ -65,21 +65,21 @@ func TestAddFile(t *testing.T) {
 
 			f := src.Files()[0]
 			if f.LogicalName() != test.logical {
-				t.Errorf("Filename (Base: %q) expected: %q, got: %q", src.Base, test.logical, f.LogicalName())
+				t.Errorf("Filename (Base: %q) expected: %q, got: %q", src.Bases[0], test.logical, f.LogicalName())
 			}
 
 			b := new(bytes.Buffer)
 			b.ReadFrom(f.Contents)
 			if b.String() != test.content {
-				t.Errorf("File (Base: %q) contents should be %q, got: %q", src.Base, test.content, b.String())
+				t.Errorf("File (Base: %q) contents should be %q, got: %q", src.Bases[0], test.content, b.String())
 			}
 
 			if f.Section() != test.section {
-				t.Errorf("File section (Base: %q) expected: %q, got: %q", src.Base, test.section, f.Section())
+				t.Errorf("File section (Base: %q) expected: %q, got: %q", src.Bases[0], test.section, f.Section())
 			}
 
 			if f.Dir() != test.dir {
-				t.Errorf("Dir path (Base: %q) expected: %q, got: %q", src.Base, test.dir, f.Dir())
+				t.Errorf("Dir path (Base: %q) expected: %q, got: %q", src.Bases[0], test.dir, f.Dir())
 			}
 		}
 	}
@@ -103,7 +103,7 @@ func TestUnicodeNorm(t *testing.T) {
 
 	for _, path := range paths {
 		src := ss.NewFilesystem("")
-		_ = src.add(path.NFD, strings.NewReader(""))
+		_ = src.add(src.Bases[0], path.NFD, strings.NewReader(""))
 		f := src.Files()[0]
 		if f.BaseFileName() != path.NFC {
 			t.Fatalf("file name in NFD form should be normalized (%s)", path.NFC)

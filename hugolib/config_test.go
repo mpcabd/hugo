@@ -16,6 +16,7 @@ package hugolib
 import (
 	"testing"
 
+	"github.com/gohugoio/hugo/helpers"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,4 +41,35 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, "side", cfg.GetString("paginatePath"))
 	// default
 	assert.Equal(t, "layouts", cfg.GetString("layoutDir"))
+
+	// contentDir checks
+	configContent = `
+	contentDir = "content"
+	contentDirs = ["content"]
+	`
+	writeToFs(t, mm, "hugo.toml", configContent)
+	cfg, err = LoadConfig(mm, "", "hugo.toml")
+	require.Error(t, err)
+
+	configContent = `
+	contentDir = "content"
+	`
+	writeToFs(t, mm, "hugo.toml", configContent)
+	cfg, err = LoadConfig(mm, "", "hugo.toml")
+	require.NoError(t, err)
+	assert.Equal(t, "content", cfg.GetString("contentDir"))
+	contentDirs := helpers.GetContentDirs(cfg)
+	assert.Equal(t, 1, len(contentDirs))
+	assert.Equal(t, "content", contentDirs[0])
+
+	configContent = `
+	contentDirs = ["content1", "content2"]
+	`
+	writeToFs(t, mm, "hugo.toml", configContent)
+	cfg, err = LoadConfig(mm, "", "hugo.toml")
+	require.NoError(t, err)
+	contentDirs = helpers.GetContentDirs(cfg)
+	assert.Equal(t, 2, len(contentDirs))
+	assert.Equal(t, "content1", contentDirs[0])
+	assert.Equal(t, "content2", contentDirs[1])
 }

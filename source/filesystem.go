@@ -33,14 +33,18 @@ type Input interface {
 
 type Filesystem struct {
 	files      []*File
-	Base       string
+	Bases      []string
 	AvoidPaths []string
 
 	SourceSpec
 }
 
 func (sp SourceSpec) NewFilesystem(base string, avoidPaths ...string) *Filesystem {
-	return &Filesystem{SourceSpec: sp, Base: base, AvoidPaths: avoidPaths}
+	return &Filesystem{SourceSpec: sp, Bases: []string{base}, AvoidPaths: avoidPaths}
+}
+
+func (sp SourceSpec) NewFilesystemMultiple(bases []string, avoidPaths ...string) *Filesystem {
+	return &Filesystem{SourceSpec: sp, Bases: bases, AvoidPaths: avoidPaths}
 }
 
 func (f *Filesystem) FilesByExts(exts ...string) []*File {
@@ -68,7 +72,7 @@ func (f *Filesystem) Files() []*File {
 }
 
 // add populates a file in the Filesystem.files
-func (f *Filesystem) add(name string, reader io.Reader) (err error) {
+func (f *Filesystem) add(base string, name string, reader io.Reader) (err error) {
 	var file *File
 
 	if runtime.GOOS == "darwin" {
@@ -76,7 +80,7 @@ func (f *Filesystem) add(name string, reader io.Reader) (err error) {
 		name = norm.NFC.String(name)
 	}
 
-	file, err = f.SourceSpec.NewFileFromAbs(f.Base, name, reader)
+	file, err = f.SourceSpec.NewFileFromAbs(base, name, reader)
 
 	if err == nil {
 		f.files = append(f.files, file)
@@ -85,6 +89,7 @@ func (f *Filesystem) add(name string, reader io.Reader) (err error) {
 }
 
 func (f *Filesystem) captureFiles() {
+	var base string
 	walker := func(filePath string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return nil
@@ -99,7 +104,7 @@ func (f *Filesystem) captureFiles() {
 			if err != nil {
 				return err
 			}
-			f.add(filePath, rd)
+			f.add(base, filePath, rd)
 		}
 		return err
 	}
@@ -107,15 +112,16 @@ func (f *Filesystem) captureFiles() {
 	if f.Fs == nil {
 		panic("Must have a fs")
 	}
-	err := helpers.SymbolicWalk(f.Fs.Source, f.Base, walker)
+	for _, base = range f.Bases {
+		err := helpers.SymbolicWalk(f.Fs.Source, base, walker)
 
-	if err != nil {
-		jww.ERROR.Println(err)
-		if err == helpers.ErrWalkRootTooShort {
-			panic("The root path is too short. If this is a test, make sure to init the content paths.")
+		if err != nil {
+			jww.ERROR.Println(err)
+			if err == helpers.ErrWalkRootTooShort {
+				panic("The root path is too short. If this is a test, make sure to init the content paths.")
+			}
 		}
 	}
-
 }
 
 func (f *Filesystem) ShouldRead(filePath string, fi os.FileInfo) (bool, error) {
