@@ -20,7 +20,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/hugolib"
@@ -65,23 +64,22 @@ func NewContent(
 		return err
 	}
 
-	var contentPath string
-	errs := make([]string, 0)
+	// Before we create content, we need to check all content directories, if any of them
+	// contains a file with the same path
 	contentDirs := helpers.GetContentDirs(s.Cfg)
-	// Try to create the content in content directories, keep track of errors
+	var contentPath string
 	for _, contentDir := range contentDirs {
 		contentPath = s.PathSpec.AbsPathify(filepath.Join(contentDir, targetPath))
-		err := helpers.SafeWriteToDisk(contentPath, bytes.NewReader(content), s.Fs.Source)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("Directory %s - Error %s", contentDir, err))
-		} else {
-			break
+		exists, _ := helpers.Exists(contentPath, s.Fs.Source)
+		if exists {
+			return fmt.Errorf("%v already exists", contentPath)
 		}
 	}
 
-	// If all content directories generated errors, then content cannot be created
-	if len(errs) == len(contentDirs) {
-		return fmt.Errorf("Unable to create content in all content directories: %s.\n", strings.Join(errs, ", "))
+	// Otherwise we create the new content in the first content directory
+	contentPath = s.PathSpec.AbsPathify(filepath.Join(contentDirs[0], targetPath))
+	if err := helpers.SafeWriteToDisk(contentPath, bytes.NewReader(content), s.Fs.Source); err != nil {
+		return err
 	}
 
 	jww.FEEDBACK.Println(contentPath, "created")

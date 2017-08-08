@@ -676,7 +676,8 @@ func (s *Site) reProcess(events []fsnotify.Event) (whatChanged, error) {
 		}
 		seen[ev] = true
 
-		if s.isContentDirEvent(ev) {
+		// Is file in a content directory and added to the Source file system?
+		if s.isContentDirEvent(ev) && s.Source.HasFile(ev.Name) {
 			logger.Println("Source changed", ev)
 			sourceChanged = append(sourceChanged, ev)
 		}

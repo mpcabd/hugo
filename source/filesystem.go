@@ -29,12 +29,15 @@ import (
 
 type Input interface {
 	Files() []*File
+	HasFile(fullpath string) bool
 }
 
 type Filesystem struct {
-	files      []*File
-	Bases      []string
-	AvoidPaths []string
+	files          []*File
+	fileNameToBase map[string]string
+	filePaths      map[string]bool
+	Bases          []string
+	AvoidPaths     []string
 
 	SourceSpec
 }
@@ -71,6 +74,11 @@ func (f *Filesystem) Files() []*File {
 	return f.files
 }
 
+func (f *Filesystem) HasFile(fullpath string) bool {
+	_, exists := f.filePaths[fullpath]
+	return exists
+}
+
 // add populates a file in the Filesystem.files
 func (f *Filesystem) add(base string, name string, reader io.Reader) (err error) {
 	var file *File
@@ -104,7 +112,27 @@ func (f *Filesystem) captureFiles() {
 			if err != nil {
 				return err
 			}
-			f.add(base, filePath, rd)
+
+			// To ensure that we only track the path once, if the same path exists in multiple bases
+			// we just track the first one.
+			relativePath, err := helpers.GetRelativePath(filePath, base)
+			if err != nil {
+				return err
+			}
+			if _, exists := f.fileNameToBase[relativePath]; !exists {
+				f.add(base, filePath, rd)
+				if f.fileNameToBase == nil {
+					f.fileNameToBase = make(map[string]string)
+				}
+				f.fileNameToBase[relativePath] = base
+
+				if f.filePaths == nil {
+					f.filePaths = make(map[string]bool)
+				}
+				f.filePaths[filePath] = true
+			} else {
+				jww.WARN.Printf("Skipping adding %s because another file with the same name exists in %s\n", filepath.Join(base, relativePath), filepath.Join(f.fileNameToBase[relativePath], relativePath))
+			}
 		}
 		return err
 	}
